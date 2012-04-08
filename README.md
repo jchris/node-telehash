@@ -1,8 +1,8 @@
 # Overview
 
-Note: The code is forked from: https://github.com/quartzjer/node-telehash and has a few minor implementation differences with the API.
+Note: The code is forked from: https://github.com/quartzjer/node-telehash and has a few minor implementation differences with the API. Everything works but it is not production ready.
 
-This module presents a simple high-level API for using TeleHash, currently it has only two basic functions, *listen* and *connect*.
+This module presents a simple high-level API for using TeleHash, currently it has only two basic functions, *listen* and *connect*, which are used to build a higher level channels module.
 
 ## Listen
 
@@ -35,7 +35,7 @@ See client.js for a detailed example.
 
 ## Channels
 
-Using the basic *connect* and *listen* functions a *channels* module is implemented to establish a peer-to-peer UDP *session/channel* between two ends.
+Using the basic *connect* and *listen* functions a *channels* module is implemented to establish a peer-to-peer UDP *session/channel* between two switches.
 
 Here we initialise the channels module and once we are seeded we establish a listener for 'telehash.echo.server'. 
 
@@ -57,6 +57,7 @@ OnConnect(peer) will be called when a channel is sucessfully opened with a new p
 The object peer has two methods data and send. data() is called when a packet arrives on the channel, and send() is used to send data back to the peer.
 
 To open a channel to a server listening on the id 'telehash.echo.server' we use channels.connect():
+
     var channels = require('./channels');
     channels.init({
        ready:function(){
@@ -77,4 +78,5 @@ Once the channel is open you could build anything ontop of it: establishing voic
 
 see the channel-server.js and channel-client.js for detailed examples.
 
+Note that the code produces alot of debug output so I suggest you redirect the stderr to /dev/null while running.
 
