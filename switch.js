@@ -43,6 +43,7 @@ function getSelf()
 }
 
 // return array of switches closest to the endh, s (optional optimized staring switch), num (default 5, optional)
+// return array of switches closest to the endh, s (optional optimized starting switch), num (default 5, optional)
 function getNear(endh, s, num)
 {
     // for not just sort all, TODO use mesh, also can use a dirty list mixed with mesh
@@ -101,7 +102,12 @@ Switch.prototype.process = function(telex, rawlen)
 
     // process serially per switch
     telex._ = this; // async eats 'this'
-    if(!this.queue) this.queue = async.queue(worker, 1);
+    if(!this.queue) {
+      this.queue = async.queue(worker, 1);
+      this.queue.drain = function() {
+        console.log('telex queue processed');
+      };
+    }
     this.queue.push(telex);
 }
 

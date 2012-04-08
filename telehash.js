@@ -169,6 +169,9 @@ function sendPOPRequest(ipp){
 		console.log("Sending +pop request to:",ipp," via:", s);
 	   }
 	});
+    console.log(from.ipp+" sent "+JSON.stringify(telex));
+    // doSend(from.ipp, {"id":"world", telex:telex});
+    
 }
 
 function doNews(s)
