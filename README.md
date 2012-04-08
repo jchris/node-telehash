@@ -6,33 +6,32 @@ This module presents a simple high-level API for using TeleHash, currently it ha
 
 ## Listen
 
-var telehash = require("./telehash");
-telehash.seed( function(err){
-	telehash.listen({id:"ECHO-SRV"}, function(switch,telex){					
-		console.log("MESSAGE:",telex.message);		
-	});
-}
+   var telehash = require("./telehash");
+   telehash.seed( function(err){
+     telehash.listen({id:"ECHO-SRV"}, function(switch,telex){					
+       console.log("MESSAGE:",telex.message);		
+     });
+   }
 
 This will seed you into the DHT and actively wait for any connect requests sent to the provided id (in this example: ECHO-SRV). The telex will be the JSON object sent in the original request, and switch is the sending/relaying switch. It will print out the message data field in the telex. Upon receiving the telex, a reply can be sent with:
 
-telehash.send( telex.from, {...}); //telex.from is the ip:port of the original sender
+    telehash.send( telex.from, {...}); //telex.from is the ip:port of the original sender
 
 
-See the server.js for a detailed example.
+See server.js for a detailed example.
 
 ## Connect
 
-var telehash = require("./telehash");
-telehash.seed( function(err){
-	telehash.connect({id:"ECHO-SRV", message:"TeleHash Rocks!"}, function(switch,telex){		
-		console.log("RESPONSE MESSAGE: ", telex.message );
-	});
-});
+    var telehash = require("./telehash");
+    telehash.seed( function(err){
+      telehash.connect({id:"ECHO-SRV", message:"TeleHash Rocks!"}, function(switch,telex){		
+         console.log("RESPONSE MESSAGE: ", telex.message );
+      });
+    });
 
 This will use the DHT to find anyone listening to that id and send the message in a JSON object. Replies will fire the callback function, which prints out the echoed message. (working to make it more general so you can send arbitrary fields)
 
-see client.js for a detailed example.
-
+See client.js for a detailed example.
 
 ## Channels
 
