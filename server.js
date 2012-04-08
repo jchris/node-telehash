@@ -1,28 +1,25 @@
 var telehash = require("./telehash");
 var hlib = require("./hash");
-  
-//telehash.init({seeds:['172.16.200.253:7777']});
-//telehash.init({seeds:['164.40.143.34:7777']});
-//telehash.init( {seeds:['127.0.0.1:7777']});
-//telehash.init({seeds:['192.168.1.69:7777']});
+var util = require("./util");
 
 telehash.seed( function(err){
         if ( err ){
                 console.log(err);
                 return;
 	}
-	server("test");
+	server("echo.message.back");
 });
 
-
 function server(name){
-	telehash.listen({id:name}, function(s,telex){			
-			
+	telehash.listen({id:name}, function(s,telex){				
 		console.log("Incoming telex:"+JSON.stringify(telex)+" via:"+s.ipp);
-		var end = new hlib.Hash(telex.from).toString();
-		telehash.send( telex.from, {'message':'hello','+connect':telex['+connect']});
-        telehash.send( s.ipp, {'+end':end,'message':'hello','+connect':telex['+connect']});
-
-
+		console.log("MESSAGE:",telex.message);
+		//if remote end is behind SNAT or we are behind the same NAT send back via relay via switch s
+		if(telex._snat || util.IP(telex.from) == util.IP(telex._to)){
+			var end = new hlib.Hash(telex.from).toString();	
+		        s.send( {'+end':end,'message':telex.message,'+connect':telex['+connect']} );
+		}else{
+			telehash.send( telex.from, {'message':telex.message,'+connect':telex['+connect']});
+		}
 	});
 }

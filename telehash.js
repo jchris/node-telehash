@@ -34,8 +34,8 @@ function getSelf(arg)
 {
     if(self) return self;
     self = arg || {};
-    if(!self.seeds) self.seeds = ['208.68.163.247:42424','164.40.143.34:7777'];
-    //if(!self.seeds) self.seeds = ['164.40.143.34:7777'];
+
+    if(!self.seeds) self.seeds = ['164.40.143.34:42424','208.68.163.247:42424'];  
 
     //determine our local interface ip (ignoring 127.0.0.1) to help determine if we are behind NAT later
     self.localip = util.getLocalIP();
@@ -106,7 +106,7 @@ function incoming(msg, rinfo)
 	//delay...to allow time  for SNAT detection
 	setTimeout( function(){
 	        self.seeding();
-	        self.connect_listen_Timeout = setInterval(connect_listen,5000);
+	        self.connect_listen_Interval = setInterval(connect_listen,5000);
 	},2000);
     }
 	
@@ -119,12 +119,12 @@ function incoming(msg, rinfo)
 
     if( !self.seed ){ //a seed should not be behind an SNAT
     	if(telex._to && self.me && !self.snat && (util.IP(telex._to) == self.me.ip) && (self.me.ipp !== telex._to) ) {
-		//we are behing symmetric NAT
+		//we are behind symmetric NAT
 		console.log("Symmetric NAT detected!", JSON.stringify(telex),"from:",from );
 		//TODO remove +pop .tap listener if exists..
 		self.snat=true;
 		self.nat=true;
-	    }
+	}
     }
 
     slib.getSwitch(from).process(telex, msg.length);
@@ -203,7 +203,7 @@ function doNews(s)
 function doSeed(callback)
 {
     if(!callback) callback = function(){};
-    if(self && self.seeding) return callback(); // already seeded
+    if(self && self.seeding && self.me) return callback(); // already seeded
     console.log("Seeding..");
     getSelf().seeding = callback;
 
@@ -212,13 +212,18 @@ function doSeed(callback)
         self.seeding("timeout");
         delete self.seeding;
         delete self.seedTimeout;
+	purgeSeeds();
         //try again...
 	doSeed( callback );
     }, 10000);
     
     pingSeeds();
 }
-
+function purgeSeeds(){
+    self.seeds.forEach(function(ipp){
+      	slib.getSwitch(ipp).purge();	
+    });
+}
 function pingSeeds(){
     // loop all seeds, asking for furthest end from them to get the most diverse responses!
     self.seeds.forEach(function(ipp){
@@ -232,8 +237,6 @@ function pingSeeds(){
 
 function doPopTap(){
     if( !self.nat ) return;
-    if( this.tapped ) return;
-    this.tapped = true;
 
     console.error("Tapping +POPs...");
     listeners.push( {hash:self.me.hash, end:self.me.end, rule:{'is':{'+end':self.me.end}, 'has':['+pop']}} );
@@ -306,14 +309,14 @@ function doConnect(arg, callback)
 {    
 	//TODO disconnect: by id
 	var id = Date.now().toString();//TODO add a sequence # to the end. to ensure unique id if many connects happen in short period of time
-	var connector = {end:new hlib.Hash(arg.id), id:id, callback:callback};
+	var connector = {end:new hlib.Hash(arg.id), id:id, callback:callback, arg:arg};
 	connectors[id]=connector;
 
 	//helper if we are behind symmetric NAT
-	//note if doConnect called before SNAT detected this will not take effect!
-	if(self.snat) {
+	//also needed if both switches behind same NAT but we can't know this at this stage so we will do it by default..
+	//if(self.snat) {
 		doFarListen({id:self.me.ipp, connect:arg.id}, undefined);
-	}
+	//}
 	console.log("ADDED CONNECTOR");
 	return id; //for disconnecting
 }
@@ -327,7 +330,8 @@ function connectLoop()
 	switches.forEach( function(s){	
 		doSend(s,{'+end':connectors[id].end.toString(),
 			  '+connect':connectors[id].id,
-			  'from':self.me.ipp});
+			  'from':self.me.ipp,
+			  'message':connectors[id].arg.message});
 	});
    }
 }
@@ -370,8 +374,7 @@ function doSend(to, telex)
 function doShutdown()
 {
     clearTimeout(self.scanTimeout);
-    clearTimeout(self.connect_listen_Timeout);
-    clearInterval(self.connect_listen_Timeout);
+    clearInterval(self.connect_listen_Interval);
     if(self.seedTimeout) {
         self.seeding("shutdown"); // a callback still waiting?!
         delete self.seedTimeout;        
@@ -410,15 +413,15 @@ function scan()
      
     // if only us or nobody around, and we were seeded at one point, try again!
     // unless we are the seed..
-
     if(all.length <= 1 && self.seeding && !self.seedTimeout && !self.seed )
     {	
-        delete self.seeding;
+        //delete self.seeding;
         if(self.me) self.me.purge(); // this will be stale if offline
         delete self.me;
-	delete self.listeners;
-	clearInterval(self.connect_listen_Timeout);	
-        return doSeed();
+	listeners = [];
+	connectors= {};
+	clearInterval(self.connect_listen_Interval);	
+        return doSeed(self.seeding);
     }
 
     // not seeding
@@ -429,7 +432,7 @@ function scan()
 	if(s.popped || self.snat ) s.send({"+end":self.me.end}); 
     });
 
-    //if we lost connection to all initial seeds.. ping them all again
+    //if we lost connection to all initial seeds.. ping them all again?
     var foundSeed = false;
     all.forEach( function (s){
 	if( s.seed ) foundSeed = true;
