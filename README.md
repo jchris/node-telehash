@@ -1,17 +1,17 @@
 # Overview
 
-Note: The code is forked from: https://github.com/quartzjer/node-telehash as has a few minor implementation differences with the API.
+Note: The code is forked from: https://github.com/quartzjer/node-telehash and has a few minor implementation differences with the API.
 
 This module presents a simple high-level API for using TeleHash, currently it has only two basic functions, *listen* and *connect*.
 
 ## Listen
 
-   var telehash = require("./telehash");
-   telehash.seed( function(err){
-     telehash.listen({id:"ECHO-SRV"}, function(switch,telex){					
-       console.log("MESSAGE:",telex.message);		
-     });
-   }
+    var telehash = require("./telehash");
+    telehash.seed( function(err){
+      telehash.listen({id:"ECHO-SRV"}, function(switch,telex){					
+        console.log("MESSAGE:",telex.message);		
+      });
+    }
 
 This will seed you into the DHT and actively wait for any connect requests sent to the provided id (in this example: ECHO-SRV). The telex will be the JSON object sent in the original request, and switch is the sending/relaying switch. It will print out the message data field in the telex. Upon receiving the telex, a reply can be sent with:
 
@@ -36,6 +36,42 @@ See client.js for a detailed example.
 ## Channels
 
 Using the basic *connect* and *listen* functions a *channels* module is implemented to establish a peer-to-peer UDP *session/channel* between two ends.
+
+Here we initialise the channels module and once we are seeded we establish a listener for 'telehash.echo.server'. 
+
+    var channels = require('./channels');
+    channels.init({
+       ready:function(){
+          channels.listen("telehash.echo.server", onConnect );
+       }		
+    });
+
+OnConnect(peer) will be called when a channel is sucessfully opened with a new peer.
+
+    function onConnect( peer ){
+       peer.data = function(msg){
+          this.send(msg);//echo message back	
+       }
+    }
+
+The object peer has two methods data and send. data() is called when a packet arrives on the channel, and send() is used to send data back to the peer.
+
+To open a channel to a server listening on the id 'telehash.echo.server' we use channels.connect():
+    var channels = require('./channels');
+    channels.init({
+       ready:function(){
+           channels.connect("telehash.echo.server", onConnect );
+       }		
+    });
+
+    function onConnect( peer ){
+       peer.data = function(msg){
+          console.log( msg.toString() );
+       }
+       setInterval( function(){				
+          server.send( new Buffer("Hello!") ); //send a message continuously 
+       },5000);
+    }
 
 Once the channel is open you could build anything ontop of it: establishing voice/video streams, exchanging files, sending emails.. anything really.
 
